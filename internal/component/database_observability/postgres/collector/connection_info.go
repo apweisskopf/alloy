@@ -31,9 +31,9 @@ type ConnectionInfo struct {
 	CloudProvider     *database_observability.CloudProvider
 	dbConnection      *sql.DB
 	metricLabelValues []string
+	monitorState      *database_observability.ConnectionInfoMonitorState
 
 	running *atomic.Bool
-	cancel  context.CancelFunc
 }
 
 func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
@@ -122,15 +122,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	c.InfoMetric.WithLabelValues(labelValues[0], labelValues[1], labelValues[2], labelValues[3], labelValues[4], labelValues[5]).Set(1)
 
 	if c.dbConnection != nil {
-		c.cancel = database_observability.RunConnectionInfoMonitor(
-			ctx,
-			c.dbConnection,
-			c.Registry,
-			c.InfoMetric,
-			labelValues,
-			func() { c.running.Store(false) },
-			nil,
-		)
+		c.monitorState = &database_observability.ConnectionInfoMonitorState{MetricRegistered: true}
 	}
 
 	return nil
@@ -140,10 +132,14 @@ func (c *ConnectionInfo) Stopped() bool {
 	return !c.running.Load()
 }
 
-func (c *ConnectionInfo) Stop() {
-	if c.cancel != nil {
-		c.cancel()
+func (c *ConnectionInfo) Tick(ctx context.Context) {
+	if c.dbConnection == nil || c.monitorState == nil {
+		return
 	}
+	database_observability.ConnectionInfoMonitorTick(ctx, c.dbConnection, c.Registry, c.InfoMetric, c.metricLabelValues, c.monitorState)
+}
+
+func (c *ConnectionInfo) Stop() {
 	c.Registry.Unregister(c.InfoMetric)
 	c.running.Store(false)
 }

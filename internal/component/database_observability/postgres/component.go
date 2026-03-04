@@ -174,19 +174,20 @@ type Collector interface {
 }
 
 type Component struct {
-	opts         component.Options
-	args         Arguments
-	mut          sync.RWMutex
-	receivers    []loki.LogsReceiver
-	handler      loki.LogsReceiver
-	registry     *prometheus.Registry
-	baseTarget   discovery.Target
-	collectors   []Collector
-	instanceKey  string
-	dbConnection *sql.DB
-	healthErr    *atomic.String
-	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
-	logsReceiver loki.LogsReceiver
+	opts                   component.Options
+	args                   Arguments
+	mut                    sync.RWMutex
+	receivers              []loki.LogsReceiver
+	handler                loki.LogsReceiver
+	registry               *prometheus.Registry
+	baseTarget             discovery.Target
+	collectors             []Collector
+	connectionInfoCollector *collector.ConnectionInfo
+	instanceKey            string
+	dbConnection           *sql.DB
+	healthErr              *atomic.String
+	openSQL                func(driverName, dataSourceName string) (*sql.DB, error)
+	logsReceiver           loki.LogsReceiver
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -247,14 +248,16 @@ func (c *Component) Run(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
+		tickerReconnect := time.NewTicker(30 * time.Second)
+		defer tickerReconnect.Stop()
+		tickerConnectionInfo := time.NewTicker(database_observability.ConnectionCheckInterval)
+		defer tickerConnectionInfo.Stop()
 
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case <-ticker.C:
+			case <-tickerReconnect.C:
 				c.mut.RLock()
 				hasCollectors := len(c.collectors) > 0
 				c.mut.RUnlock()
@@ -264,6 +267,13 @@ func (c *Component) Run(ctx context.Context) error {
 					if err := c.tryReconnect(ctx); err != nil {
 						level.Error(c.opts.Logger).Log("msg", "reconnection attempt failed", "err", err)
 					}
+				}
+			case <-tickerConnectionInfo.C:
+				c.mut.RLock()
+				ci := c.connectionInfoCollector
+				c.mut.RUnlock()
+				if ci != nil {
+					ci.Tick(ctx)
 				}
 			}
 		}
@@ -384,6 +394,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		collector.Stop()
 	}
 	c.collectors = nil
+	c.connectionInfoCollector = nil
 
 	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
@@ -519,8 +530,9 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	}
 	if err := ciCollector.Start(context.Background()); err != nil {
 		logStartError(collector.ConnectionInfoName, "start", err)
+	} else {
+		c.connectionInfoCollector = ciCollector
 	}
-
 	c.collectors = append(c.collectors, ciCollector)
 
 	if collectors[collector.ExplainPlanCollector] {
