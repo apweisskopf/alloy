@@ -29,7 +29,7 @@ type ConnectionInfo struct {
 	InfoMetric        *prometheus.GaugeVec
 	CloudProvider     *database_observability.CloudProvider
 	dbConnection      *sql.DB
-	metricLabelValues []string
+	metricLabels      *database_observability.ConnectionInfoLabels
 	monitorState      *database_observability.ConnectionInfoMonitorState
 
 	running *atomic.Bool
@@ -111,9 +111,15 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	}
 	c.running.Store(true)
 
-	labelValues := []string{providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion}
-	c.metricLabelValues = labelValues
-	c.InfoMetric.WithLabelValues(labelValues[0], labelValues[1], labelValues[2], labelValues[3], labelValues[4], labelValues[5]).Set(1)
+	c.metricLabels = &database_observability.ConnectionInfoLabels{
+		ProviderName:         providerName,
+		ProviderRegion:       providerRegion,
+		ProviderAccount:      providerAccount,
+		DBInstanceIdentifier: dbInstanceIdentifier,
+		Engine:               engine,
+		EngineVersion:        c.EngineVersion,
+	}
+	c.InfoMetric.WithLabelValues(c.metricLabels.LabelValues()...).Set(1)
 
 	if c.dbConnection != nil {
 		c.monitorState = &database_observability.ConnectionInfoMonitorState{MetricRegistered: true}
@@ -130,7 +136,7 @@ func (c *ConnectionInfo) Tick(ctx context.Context) {
 	if c.dbConnection == nil || c.monitorState == nil {
 		return
 	}
-	database_observability.ConnectionInfoMonitorTick(ctx, c.dbConnection, c.Registry, c.InfoMetric, c.metricLabelValues, c.monitorState)
+	database_observability.ConnectionInfoMonitorTick(ctx, c.dbConnection, c.Registry, c.InfoMetric, c.metricLabels, c.monitorState)
 }
 
 func (c *ConnectionInfo) Stop() {

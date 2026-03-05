@@ -15,6 +15,21 @@ const ConnectionCheckInterval = 60 * time.Second
 // and the number of consecutive successful pings before re-registering it after a disconnect.
 const ConnectionChecksThreshold = 3
 
+// ConnectionInfoLabels holds the label values for the database_observability_connection_info metric.
+type ConnectionInfoLabels struct {
+	ProviderName         string
+	ProviderRegion       string
+	ProviderAccount      string
+	DBInstanceIdentifier string
+	Engine               string
+	EngineVersion        string
+}
+
+// LabelValues returns the label values in the order required by the connection_info GaugeVec.
+func (l *ConnectionInfoLabels) LabelValues() []string {
+	return []string{l.ProviderName, l.ProviderRegion, l.ProviderAccount, l.DBInstanceIdentifier, l.Engine, l.EngineVersion}
+}
+
 // ConnectionInfoMonitorConfig optionally overrides the default check interval and threshold.
 // Used by tests to run the monitor with shorter intervals. If nil, defaults are used.
 type ConnectionInfoMonitorConfig struct {
@@ -36,10 +51,8 @@ type ConnectionInfoMonitorState struct {
 // (unregisters after threshold consecutive failures, re-registers after threshold consecutive
 // successes). Call this from an existing tick loop (e.g. the component's Run goroutine) to avoid
 // creating a separate goroutine.
-// labelValues must contain exactly 6 values: provider_name, provider_region, provider_account,
-// db_instance_identifier, engine, engine_version.
-func ConnectionInfoMonitorTick(ctx context.Context, db *sql.DB, registry *prometheus.Registry, infoMetric *prometheus.GaugeVec, labelValues []string, state *ConnectionInfoMonitorState) {
-	if state == nil {
+func ConnectionInfoMonitorTick(ctx context.Context, db *sql.DB, registry *prometheus.Registry, infoMetric *prometheus.GaugeVec, labels *ConnectionInfoLabels, state *ConnectionInfoMonitorState) {
+	if state == nil || labels == nil {
 		return
 	}
 	threshold := state.Threshold
@@ -62,7 +75,7 @@ func ConnectionInfoMonitorTick(ctx context.Context, db *sql.DB, registry *promet
 			state.ConsecutiveSuccesses++
 			if state.ConsecutiveSuccesses >= threshold {
 				registry.MustRegister(infoMetric)
-				infoMetric.WithLabelValues(labelValues[0], labelValues[1], labelValues[2], labelValues[3], labelValues[4], labelValues[5]).Set(1)
+				infoMetric.WithLabelValues(labels.LabelValues()...).Set(1)
 				state.MetricRegistered = true
 				state.ConsecutiveSuccesses = 0
 			}
@@ -73,7 +86,7 @@ func ConnectionInfoMonitorTick(ctx context.Context, db *sql.DB, registry *promet
 // RunConnectionInfoMonitor runs the connection check loop in a goroutine. Use this only when you
 // cannot integrate ConnectionInfoMonitorTick into an existing tick loop (e.g. in tests). Production
 // MySQL and Postgres components call ConnectionInfoMonitorTick from their existing Run goroutine.
-func RunConnectionInfoMonitor(ctx context.Context, db *sql.DB, registry *prometheus.Registry, infoMetric *prometheus.GaugeVec, labelValues []string, onStopped func(), config *ConnectionInfoMonitorConfig) (cancel context.CancelFunc) {
+func RunConnectionInfoMonitor(ctx context.Context, db *sql.DB, registry *prometheus.Registry, infoMetric *prometheus.GaugeVec, labels *ConnectionInfoLabels, onStopped func(), config *ConnectionInfoMonitorConfig) (cancel context.CancelFunc) {
 	interval := ConnectionCheckInterval
 	threshold := ConnectionChecksThreshold
 	if config != nil {
@@ -91,7 +104,7 @@ func RunConnectionInfoMonitor(ctx context.Context, db *sql.DB, registry *prometh
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
-			ConnectionInfoMonitorTick(ctx, db, registry, infoMetric, labelValues, state)
+			ConnectionInfoMonitorTick(ctx, db, registry, infoMetric, labels, state)
 			select {
 			case <-ctx.Done():
 				return

@@ -31,8 +31,11 @@ func TestRunConnectionInfoMonitor_UnregistersAfterConsecutiveFailures(t *testing
 	}, []string{"provider_name", "provider_region", "provider_account", "db_instance_identifier", "engine", "engine_version"})
 	require.NoError(t, registry.Register(infoMetric))
 
-	labelValues := []string{"aws", "us-east-1", "123456789", "my-db", "postgres", "15.0"}
-	infoMetric.WithLabelValues(labelValues[0], labelValues[1], labelValues[2], labelValues[3], labelValues[4], labelValues[5]).Set(1)
+	labels := &ConnectionInfoLabels{
+		ProviderName: "aws", ProviderRegion: "us-east-1", ProviderAccount: "123456789",
+		DBInstanceIdentifier: "my-db", Engine: "postgres", EngineVersion: "15.0",
+	}
+	infoMetric.WithLabelValues(labels.LabelValues()...).Set(1)
 
 	// Expect 3 pings, all failing
 	pingErr := errors.New("connection refused")
@@ -46,7 +49,7 @@ func TestRunConnectionInfoMonitor_UnregistersAfterConsecutiveFailures(t *testing
 		CheckInterval:   testCheckInterval,
 		ChecksThreshold: testThreshold,
 	}
-	cancel := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labelValues, onStopped, config)
+	cancel := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labels, onStopped, config)
 	defer cancel()
 
 	// Wait for at least 3 tick intervals so the monitor performs 3 failed pings and unregisters
@@ -82,8 +85,11 @@ func TestRunConnectionInfoMonitor_ReregistersAfterConsecutiveSuccesses(t *testin
 	}, []string{"provider_name", "provider_region", "provider_account", "db_instance_identifier", "engine", "engine_version"})
 	require.NoError(t, registry.Register(infoMetric))
 
-	labelValues := []string{"aws", "us-east-1", "123456789", "my-db", "mysql", "8.0.32"}
-	infoMetric.WithLabelValues(labelValues[0], labelValues[1], labelValues[2], labelValues[3], labelValues[4], labelValues[5]).Set(1)
+	labels := &ConnectionInfoLabels{
+		ProviderName: "aws", ProviderRegion: "us-east-1", ProviderAccount: "123456789",
+		DBInstanceIdentifier: "my-db", Engine: "mysql", EngineVersion: "8.0.32",
+	}
+	infoMetric.WithLabelValues(labels.LabelValues()...).Set(1)
 
 	// First 3 pings fail (metric gets unregistered), then 3 pings succeed (metric gets re-registered)
 	pingErr := errors.New("connection refused")
@@ -100,7 +106,7 @@ func TestRunConnectionInfoMonitor_ReregistersAfterConsecutiveSuccesses(t *testin
 		CheckInterval:   testCheckInterval,
 		ChecksThreshold: testThreshold,
 	}
-	cancel := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labelValues, onStopped, config)
+	cancel := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labels, onStopped, config)
 	defer cancel()
 
 	// Wait for 6 tick intervals so we get 3 failures (unregister) then 3 successes (re-register).
@@ -142,8 +148,11 @@ func TestRunConnectionInfoMonitor_MetricRemainsRegisteredWhilePingsSucceed(t *te
 	}, []string{"provider_name", "provider_region", "provider_account", "db_instance_identifier", "engine", "engine_version"})
 	require.NoError(t, registry.Register(infoMetric))
 
-	labelValues := []string{"unknown", "unknown", "unknown", "unknown", "postgres", "15.0"}
-	infoMetric.WithLabelValues(labelValues[0], labelValues[1], labelValues[2], labelValues[3], labelValues[4], labelValues[5]).Set(1)
+	labels := &ConnectionInfoLabels{
+		ProviderName: "unknown", ProviderRegion: "unknown", ProviderAccount: "unknown",
+		DBInstanceIdentifier: "unknown", Engine: "postgres", EngineVersion: "15.0",
+	}
+	infoMetric.WithLabelValues(labels.LabelValues()...).Set(1)
 
 	// All pings succeed (allow at least 4 successful pings)
 	for i := 0; i < 4; i++ {
@@ -156,7 +165,7 @@ func TestRunConnectionInfoMonitor_MetricRemainsRegisteredWhilePingsSucceed(t *te
 		CheckInterval:   testCheckInterval,
 		ChecksThreshold: testThreshold,
 	}
-	cancel := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labelValues, onStopped, config)
+	cancel := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labels, onStopped, config)
 	defer cancel()
 
 	// Wait for a few tick intervals
@@ -194,8 +203,11 @@ func TestRunConnectionInfoMonitor_CancelStopsGoroutine(t *testing.T) {
 	}, []string{"provider_name", "provider_region", "provider_account", "db_instance_identifier", "engine", "engine_version"})
 	require.NoError(t, registry.Register(infoMetric))
 
-	labelValues := []string{"a", "b", "c", "d", "e", "f"}
-	infoMetric.WithLabelValues(labelValues[0], labelValues[1], labelValues[2], labelValues[3], labelValues[4], labelValues[5]).Set(1)
+	labels := &ConnectionInfoLabels{
+		ProviderName: "a", ProviderRegion: "b", ProviderAccount: "c",
+		DBInstanceIdentifier: "d", Engine: "e", EngineVersion: "f",
+	}
+	infoMetric.WithLabelValues(labels.LabelValues()...).Set(1)
 
 	mock.ExpectPing() // at most one ping before we cancel
 
@@ -206,7 +218,7 @@ func TestRunConnectionInfoMonitor_CancelStopsGoroutine(t *testing.T) {
 		CheckInterval:   testCheckInterval,
 		ChecksThreshold: testThreshold,
 	}
-	cancel := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labelValues, onStopped, config)
+	cancel := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labels, onStopped, config)
 
 	// Cancel immediately; onStopped should be called when the goroutine exits
 	cancel()
