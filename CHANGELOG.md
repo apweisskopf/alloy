@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.14.0](https://github.com/grafana/alloy/compare/v1.13.2...v1.14.0) (2026-03-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **loki.write:** removed `loki_write_encoded_bytes_total`, `loki_write_mutated_entries_total` and `loki_write_mutated_bytes_total`
+    * The first one is not used in any official dashboard and the same data
+    can be observed using `loki_write_request_size_bytes`.
+    * The last two was undocumented and used in code.
+* **otelcol:** Add otelcol.processor.resourcedetection config for eks node name, deprecate unsupported dynatrace and akamai config ([#5483](https://github.com/grafana/alloy/issues/5483))
+
+### Features 🌟
+
+* **loki.process:** Add debug metrics for CRI stage to track truncation of lines and partial line flushing ([#5399](https://github.com/grafana/alloy/issues/5399)) ([5bf4dcf](https://github.com/grafana/alloy/commit/5bf4dcf566f5629462b60747f49491903a4c6ae9))
+* **loki.secretfilter:** Add configurable processing timeout with timeout metrics ([#5581](https://github.com/grafana/alloy/issues/5581)) ([c47338f](https://github.com/grafana/alloy/commit/c47338fec6eb26fa9f2d040cc002f78721b93427))
+* **loki.source.syslog:** Fix buffer read in raw parser ([#5709](https://github.com/grafana/alloy/issues/5709)) ([eba348d](https://github.com/grafana/alloy/commit/eba348dd5ba8a444c69a8e37719282ec7fccf632))
+* **loki.write:** Add metric to track request size ([#5652](https://github.com/grafana/alloy/issues/5652)) ([fb0608c](https://github.com/grafana/alloy/commit/fb0608c76f9f0072ccd689346e7d7cac74ebcfcd))
+* **prometheus.exporter.postgres:** Update to version 0.19.1 ([#5659](https://github.com/grafana/alloy/issues/5659)) ([54e5c2f](https://github.com/grafana/alloy/commit/54e5c2f11f43ba4884417dd5299b1a70cb305571))
+
+
+### Bug Fixes 🐛
+
+* **database_observability.mysql:** Remove `sql_text` from `wait_event` logs ([#5696](https://github.com/grafana/alloy/issues/5696)) ([d5a3600](https://github.com/grafana/alloy/commit/d5a36003a60cec824ccc9571a1304d30fc2ba8df))
+* **deps:** Update module golang.org/x/net to v0.51.0 [SECURITY] ([#5685](https://github.com/grafana/alloy/issues/5685)) ([fdff346](https://github.com/grafana/alloy/commit/fdff346c7959a56f61df02222a7dbbd4f9b71871))
+* **loki.source.docker:** Skip lines that are too big to consume ([#5648](https://github.com/grafana/alloy/issues/5648)) ([954500a](https://github.com/grafana/alloy/commit/954500ac26a6945f52bc764e136138adf5a6a04b))
+* **otelcol:** Add otelcol.processor.resourcedetection config for eks node name, deprecate unsupported dynatrace and akamai config ([#5483](https://github.com/grafana/alloy/issues/5483)) ([9c6e78f](https://github.com/grafana/alloy/commit/9c6e78ff2c2b3c56db504f8dc4a82ac45f058fbe))
+* **prometheus.remote_write:** Fix sent_batch_duration_seconds measuring before the request was sent ([#5697](https://github.com/grafana/alloy/issues/5697)) ([10cfb6c](https://github.com/grafana/alloy/commit/10cfb6cfb869c11478843d541a905a10b423a063))
+* **pyroscope.ebpf:** Close memory-mapped tables on LRU eviction in ([#5629](https://github.com/grafana/alloy/issues/5629)) ([56cb188](https://github.com/grafana/alloy/commit/56cb188d4d97dee6c680326e39b63c3cbee3db28))
+
 ## [1.13.2](https://github.com/grafana/alloy/compare/v1.13.1...v1.13.2) (2026-02-23)
 
 
