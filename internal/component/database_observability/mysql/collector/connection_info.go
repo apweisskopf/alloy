@@ -23,14 +23,14 @@ type ConnectionInfoArguments struct {
 }
 
 type ConnectionInfo struct {
-	DSN               string
-	Registry          *prometheus.Registry
-	EngineVersion     string
-	InfoMetric        *prometheus.GaugeVec
-	CloudProvider     *database_observability.CloudProvider
-	dbConnection      *sql.DB
-	metricLabels      *database_observability.ConnectionInfoLabels
-	monitorState      *database_observability.ConnectionInfoMonitorState
+	DSN           string
+	Registry      *prometheus.Registry
+	EngineVersion string
+	InfoMetric    *prometheus.GaugeVec
+	CloudProvider *database_observability.CloudProvider
+	dbConnection  *sql.DB
+	metricLabels  *database_observability.ConnectionInfoLabels
+	monitorState  *database_observability.ConnectionInfoMonitorState
 
 	running *atomic.Bool
 }

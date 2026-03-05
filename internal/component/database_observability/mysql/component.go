@@ -209,19 +209,19 @@ type Collector interface {
 }
 
 type Component struct {
-	opts                   component.Options
-	args                   Arguments
-	mut                    sync.RWMutex
-	receivers              []loki.LogsReceiver
-	handler                loki.LogsReceiver
-	registry               *prometheus.Registry
-	baseTarget             discovery.Target
-	collectors             []Collector
+	opts                    component.Options
+	args                    Arguments
+	mut                     sync.RWMutex
+	receivers               []loki.LogsReceiver
+	handler                 loki.LogsReceiver
+	registry                *prometheus.Registry
+	baseTarget              discovery.Target
+	collectors              []Collector
 	connectionInfoCollector *collector.ConnectionInfo
-	instanceKey            string
-	dbConnection           *sql.DB
-	healthErr              *atomic.String
-	openSQL                func(driverName, dataSourceName string) (*sql.DB, error)
+	instanceKey             string
+	dbConnection            *sql.DB
+	healthErr               *atomic.String
+	openSQL                 func(driverName, dataSourceName string) (*sql.DB, error)
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
