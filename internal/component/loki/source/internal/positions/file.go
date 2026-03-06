@@ -188,38 +188,37 @@ func (p *PositionsFile) get(key, labels string) (string, bool) {
 	return pos, ok
 }
 
-func (p *PositionsFile) Put(path, labels string, pos int64) {
+func (p *PositionsFile) Put(key, labels string, pos int64) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	p.put(path, labels, strconv.FormatInt(pos, 10))
+	p.put(key, labels, strconv.FormatInt(pos, 10))
 }
 
-func (p *PositionsFile) PutString(path, labels, pos string) {
+func (p *PositionsFile) PutString(key, labels, pos string) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	p.put(path, labels, pos)
+	p.put(key, labels, pos)
 }
 
-func (p *PositionsFile) put(path, labels, pos string) {
+func (p *PositionsFile) put(key, labels, pos string) {
 	if p.cfg.KeyMode == KeyModeExcludeLabels {
-		p.positions[Entry{path, ""}] = pos
+		p.positions[Entry{key, ""}] = pos
 		return
 	}
-	p.positions[Entry{path, labels}] = pos
+	p.positions[Entry{key, labels}] = pos
 }
 
-func (p *PositionsFile) Remove(path, labels string) {
+func (p *PositionsFile) Remove(key, labels string) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	p.remove(path, labels)
+	p.remove(key, labels)
 }
 
-func (p *PositionsFile) remove(path, labels string) {
-	if p.cfg.KeyMode == KeyModeExcludeLabels {
-		delete(p.positions, Entry{path, ""})
-		return
-	}
-	delete(p.positions, Entry{path, labels})
+func (p *PositionsFile) remove(key, labels string) {
+	// NOTE: we remove entries both with and without key so we don't
+	// have orphaned positions stored.
+	delete(p.positions, Entry{key, ""})
+	delete(p.positions, Entry{key, labels})
 }
 
 func (p *PositionsFile) SyncPeriod() time.Duration {

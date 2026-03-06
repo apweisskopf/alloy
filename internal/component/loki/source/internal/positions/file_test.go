@@ -110,12 +110,12 @@ func TestPositionFile(t *testing.T) {
 		}
 
 		p.Put("/tmp/app.log", `{job="a"}`, 10)
-		pos, err := p.Get("/tmp/app.log", "")
+		pos, err := p.Get("/tmp/app.log", `{job="a"}`)
 		require.NoError(t, err)
-		require.Equal(t, int64(0), pos)
+		require.Equal(t, int64(10), pos)
 
 		p.Update(Config{KeyMode: KeyModeExcludeLabels, SyncPeriod: time.Second})
-		pos, err = p.Get("/tmp/app.log", "")
+		pos, err = p.Get("/tmp/app.log", `{job="a"}`)
 		require.NoError(t, err)
 		require.Equal(t, int64(10), pos)
 	})
@@ -127,9 +127,9 @@ func TestPositionFile(t *testing.T) {
 		}
 
 		p.Put("/tmp/app.log", "", 10)
-		pos, err := p.Get("/tmp/app.log", `{job="a"}`)
+		pos, err := p.Get("/tmp/app.log", "")
 		require.NoError(t, err)
-		require.Equal(t, int64(0), pos)
+		require.Equal(t, int64(10), pos)
 
 		p.Update(Config{KeyMode: KeyModeIncludeLabels, SyncPeriod: time.Second})
 		pos, err = p.Get("/tmp/app.log", `{job="a"}`)
