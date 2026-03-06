@@ -171,7 +171,7 @@ func (p *PositionsFile) get(key, labels string) (string, bool) {
 		// First we try to get position by key.
 		pos, ok := p.positions[Entry{key, ""}]
 		if !ok {
-			// Fallback to postion with key and labels.
+			// Fallback to position with key and labels.
 			pos, ok = p.positions[Entry{key, labels}]
 		}
 
@@ -181,7 +181,7 @@ func (p *PositionsFile) get(key, labels string) (string, bool) {
 	// First we try to get position by key and labels.
 	pos, ok := p.positions[Entry{key, labels}]
 	if !ok {
-		// Fallback to postion without labels
+		// Fallback to position without labels
 		pos, ok = p.positions[Entry{key, ""}]
 	}
 

@@ -35,11 +35,7 @@ func Test_UnmarshalConfig(t *testing.T) {
 		expected Arguments
 	}
 
-	tests := []struct {
-		name     string
-		config   string
-		expected Arguments
-	}{
+	tests := []testCase{
 		{
 			name: "default",
 			config: `
