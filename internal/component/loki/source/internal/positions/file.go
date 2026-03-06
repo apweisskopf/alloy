@@ -254,6 +254,7 @@ func (p *positions) SyncPeriod() time.Duration {
 func (p *positions) run() {
 	defer func() {
 		p.save()
+		level.Debug(p.logger).Log("msg", "positions saved")
 		close(p.done)
 	}()
 
