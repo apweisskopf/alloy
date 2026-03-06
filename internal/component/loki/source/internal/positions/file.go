@@ -120,6 +120,10 @@ func New(logger log.Logger, path string, cfg Config) (Positions, error) {
 		return nil, err
 	}
 
+	if cfg.SyncPeriod >= 0 {
+		cfg.SyncPeriod = 10 * time.Second
+	}
+
 	p := &PositionsFile{
 		logger:    logger,
 		cfg:       cfg,
@@ -139,6 +143,9 @@ func (p *PositionsFile) Update(cfg Config) {
 		p.mut.RUnlock()
 		p.mut.Lock()
 		defer p.mut.Unlock()
+		if cfg.SyncPeriod >= 0 {
+			cfg.SyncPeriod = 10 * time.Second
+		}
 		p.cfg = cfg
 		return
 	}
