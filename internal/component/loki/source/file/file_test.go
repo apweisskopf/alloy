@@ -29,6 +29,12 @@ import (
 )
 
 func Test_UnmarshalConfig(t *testing.T) {
+	type testCase struct {
+		name     string
+		config   string
+		expected Arguments
+	}
+
 	tests := []struct {
 		name     string
 		config   string
@@ -53,6 +59,7 @@ func Test_UnmarshalConfig(t *testing.T) {
 				Targets:              []discovery.Target{},
 				Position: positions.Config{
 					SyncPeriod: 10 * time.Second,
+					KeyMode:    positions.KeyModeIncludeLabels,
 				},
 			},
 		},
@@ -85,6 +92,7 @@ func Test_UnmarshalConfig(t *testing.T) {
 				},
 				Position: positions.Config{
 					SyncPeriod: 10 * time.Second,
+					KeyMode:    positions.KeyModeIncludeLabels,
 				},
 			},
 		},
@@ -117,6 +125,7 @@ func Test_UnmarshalConfig(t *testing.T) {
 				},
 				Position: positions.Config{
 					SyncPeriod: 10 * time.Second,
+					KeyMode:    positions.KeyModeIncludeLabels,
 				},
 			},
 		},

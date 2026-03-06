@@ -5,6 +5,7 @@ package positions
 // same place in case of a restart.
 
 import (
+	"encoding"
 	"errors"
 	"fmt"
 	"maps"
@@ -56,6 +57,7 @@ var (
 
 // Config describes where to get position information from.
 type Config struct {
+	KeyMode    KeyMode       `alloy:"key_mode,attr,optional"`
 	SyncPeriod time.Duration `alloy:"sync_period,attr,optional"`
 }
 
@@ -67,7 +69,37 @@ func (c *Config) Validate() error {
 }
 
 func (c *Config) SetToDefault() {
+	c.KeyMode = KeyModeIncludeLabels
 	c.SyncPeriod = 10 * time.Second
+}
+
+var (
+	_ encoding.TextUnmarshaler = (*KeyMode)(nil)
+	_ encoding.TextMarshaler   = (KeyMode)(0)
+)
+
+type KeyMode string
+
+const (
+	KeyModeIncludeLabels KeyMode = "include_labels"
+	KeyModeExcludeLabels KeyMode = "exclude_labels"
+)
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (m *KeyMode) UnmarshalText(text []byte) error {
+	s := KeyMode(text)
+	switch s {
+	case KeyModeIncludeLabels, KeyModeExcludeLabels:
+		*m = s
+	default:
+		return fmt.Errorf("unknown key_mode value: %s", s)
+	}
+	return nil
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (k KeyMode) MarshalText() (text []byte, err error) {
+	return []byte(k), nil
 }
 
 // PositionsFile tracks how far through each file we've read.
@@ -103,7 +135,7 @@ func New(logger log.Logger, path string, cfg Config) (Positions, error) {
 
 func (p *PositionsFile) Update(cfg Config) {
 	p.mut.RLock()
-	if cfg.SyncPeriod != p.cfg.SyncPeriod {
+	if configChanged(p.cfg, cfg) {
 		p.mut.RUnlock()
 		p.mut.Lock()
 		defer p.mut.Unlock()
@@ -113,29 +145,66 @@ func (p *PositionsFile) Update(cfg Config) {
 	p.mut.RUnlock()
 }
 
-func (p *PositionsFile) Get(path, labels string) (int64, error) {
+func configChanged(prev, next Config) bool {
+	return prev.SyncPeriod != next.SyncPeriod || prev.KeyMode != next.KeyMode
+}
+
+func (p *PositionsFile) Get(key, labels string) (int64, error) {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
-	pos, ok := p.positions[Entry{path, labels}]
+	str, ok := p.get(key, labels)
 	if !ok {
 		return 0, nil
 	}
-	return strconv.ParseInt(pos, 10, 64)
+	return strconv.ParseInt(str, 10, 64)
 }
 
-func (p *PositionsFile) GetString(path, labels string) string {
+func (p *PositionsFile) GetString(key, labels string) string {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
-	return p.positions[Entry{path, labels}]
+	str, _ := p.get(key, labels)
+	return str
+}
+
+func (p *PositionsFile) get(key, labels string) (string, bool) {
+	if p.cfg.KeyMode == KeyModeExcludeLabels {
+		// First we try to get position by key.
+		pos, ok := p.positions[Entry{key, ""}]
+		if !ok {
+			// Fallback to postion with key and labels.
+			pos, ok = p.positions[Entry{key, labels}]
+		}
+
+		return pos, ok
+	}
+
+	// First we try to get position by key and labels.
+	pos, ok := p.positions[Entry{key, labels}]
+	if !ok {
+		// Fallback to postion without labels
+		pos, ok = p.positions[Entry{key, ""}]
+	}
+
+	return pos, ok
 }
 
 func (p *PositionsFile) Put(path, labels string, pos int64) {
-	p.PutString(path, labels, strconv.FormatInt(pos, 10))
-}
-
-func (p *PositionsFile) PutString(path, labels string, pos string) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
+	p.put(path, labels, strconv.FormatInt(pos, 10))
+}
+
+func (p *PositionsFile) PutString(path, labels, pos string) {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	p.put(path, labels, pos)
+}
+
+func (p *PositionsFile) put(path, labels, pos string) {
+	if p.cfg.KeyMode == KeyModeExcludeLabels {
+		p.positions[Entry{path, ""}] = pos
+		return
+	}
 	p.positions[Entry{path, labels}] = pos
 }
 
@@ -146,6 +215,10 @@ func (p *PositionsFile) Remove(path, labels string) {
 }
 
 func (p *PositionsFile) remove(path, labels string) {
+	if p.cfg.KeyMode == KeyModeExcludeLabels {
+		delete(p.positions, Entry{path, ""})
+		return
+	}
 	delete(p.positions, Entry{path, labels})
 }
 

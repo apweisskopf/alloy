@@ -12,7 +12,164 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
+
+func TestUnmarshal(t *testing.T) {
+	tests := []struct {
+		name     string
+		cfg      string
+		expected Config
+		wantErr  bool
+	}{
+		{
+			name: "defaults",
+			cfg:  ``,
+			expected: Config{
+				KeyMode:    KeyModeIncludeLabels,
+				SyncPeriod: 10 * time.Second,
+			},
+		},
+		{
+			name: "custom values",
+			cfg: `
+				key_mode = "exclude_labels"
+				sync_period = "30s"
+			`,
+			expected: Config{
+				KeyMode:    KeyModeExcludeLabels,
+				SyncPeriod: 30 * time.Second,
+			},
+		},
+		{
+			name: "invalid key mode",
+			cfg: `
+				key_mode = "nope"
+			`,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg Config
+			err := syntax.Unmarshal([]byte(tt.cfg), &cfg)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, cfg)
+		})
+	}
+}
+
+func TestPositionFile(t *testing.T) {
+	t.Run("include labels tracks independently", func(t *testing.T) {
+		p := &PositionsFile{
+			cfg:       Config{KeyMode: KeyModeIncludeLabels, SyncPeriod: time.Second},
+			positions: map[Entry]string{},
+		}
+
+		p.Put("/tmp/app.log", `{job="a"}`, 10)
+		p.Put("/tmp/app.log", `{job="b"}`, 20)
+
+		posA, err := p.Get("/tmp/app.log", `{job="a"}`)
+		require.NoError(t, err)
+		require.Equal(t, int64(10), posA)
+
+		posB, err := p.Get("/tmp/app.log", `{job="b"}`)
+		require.NoError(t, err)
+		require.Equal(t, int64(20), posB)
+	})
+
+	t.Run("exclude labels tracks by path only", func(t *testing.T) {
+		p := &PositionsFile{
+			cfg:       Config{KeyMode: KeyModeExcludeLabels, SyncPeriod: time.Second},
+			positions: map[Entry]string{},
+		}
+
+		p.Put("/tmp/app.log", `{job="a"}`, 10)
+		p.Put("/tmp/app.log", `{job="b"}`, 20)
+
+		posA, err := p.Get("/tmp/app.log", "")
+		require.NoError(t, err)
+		require.Equal(t, int64(20), posA)
+
+		posB, err := p.Get("/tmp/app.log", "")
+		require.NoError(t, err)
+		require.Equal(t, int64(20), posB)
+	})
+
+	t.Run("switch include to exclude keeps readable position", func(t *testing.T) {
+		p := &PositionsFile{
+			cfg:       Config{KeyMode: KeyModeIncludeLabels, SyncPeriod: time.Second},
+			positions: map[Entry]string{},
+		}
+
+		p.Put("/tmp/app.log", `{job="a"}`, 10)
+		pos, err := p.Get("/tmp/app.log", "")
+		require.NoError(t, err)
+		require.Equal(t, int64(0), pos)
+
+		p.Update(Config{KeyMode: KeyModeExcludeLabels, SyncPeriod: time.Second})
+		pos, err = p.Get("/tmp/app.log", "")
+		require.NoError(t, err)
+		require.Equal(t, int64(10), pos)
+	})
+
+	t.Run("switch exclude to include keeps readable position", func(t *testing.T) {
+		p := &PositionsFile{
+			cfg:       Config{KeyMode: KeyModeExcludeLabels, SyncPeriod: time.Second},
+			positions: map[Entry]string{},
+		}
+
+		p.Put("/tmp/app.log", "", 10)
+		pos, err := p.Get("/tmp/app.log", `{job="a"}`)
+		require.NoError(t, err)
+		require.Equal(t, int64(0), pos)
+
+		p.Update(Config{KeyMode: KeyModeIncludeLabels, SyncPeriod: time.Second})
+		pos, err = p.Get("/tmp/app.log", `{job="a"}`)
+		require.NoError(t, err)
+		require.Equal(t, int64(10), pos)
+	})
+
+	t.Run("remove respects active key mode", func(t *testing.T) {
+		t.Run("exclude labels", func(t *testing.T) {
+			p := &PositionsFile{
+				cfg:       Config{KeyMode: KeyModeExcludeLabels, SyncPeriod: time.Second},
+				positions: map[Entry]string{},
+			}
+			p.Put("/tmp/app.log", `{job="a"}`, 10)
+			p.Remove("/tmp/app.log", `{job="b"}`)
+
+			pos, err := p.Get("/tmp/app.log", `{job="a"}`)
+			require.NoError(t, err)
+			require.Equal(t, int64(0), pos)
+		})
+
+		t.Run("include labels", func(t *testing.T) {
+			p := &PositionsFile{
+				cfg:       Config{KeyMode: KeyModeIncludeLabels, SyncPeriod: time.Second},
+				positions: map[Entry]string{},
+			}
+			p.Put("/tmp/app.log", `{job="a"}`, 10)
+			p.Put("/tmp/app.log", `{job="b"}`, 20)
+			p.Remove("/tmp/app.log", `{job="a"}`)
+
+			posA, err := p.Get("/tmp/app.log", `{job="a"}`)
+			require.NoError(t, err)
+			require.Equal(t, int64(0), posA)
+
+			posB, err := p.Get("/tmp/app.log", `{job="b"}`)
+			require.NoError(t, err)
+			require.Equal(t, int64(20), posB)
+		})
+	})
+}
 
 func TestReadPositions(t *testing.T) {
 	t.Run("current structure", func(t *testing.T) {
