@@ -5,7 +5,6 @@ package positions
 // same place in case of a restart.
 
 import (
-	"flag"
 	"fmt"
 	"maps"
 	"os"
@@ -35,28 +34,6 @@ func CursorKey(key string) string {
 type Config struct {
 	SyncPeriod    time.Duration
 	PositionsFile string
-}
-
-// RegisterFlagsWithPrefix registers flags where every name is prefixed by
-// prefix. If prefix is a non-empty string, prefix should end with a period.
-func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	f.DurationVar(&cfg.SyncPeriod, prefix+"positions.sync-period", 10*time.Second, "Period with this to sync the position file.")
-	f.StringVar(&cfg.PositionsFile, prefix+"positions.file", "/var/log/positions.yaml", "Location to read/write positions from.")
-}
-
-// RegisterFlags register flags.
-func (cfg *Config) RegisterFlags(flags *flag.FlagSet) {
-	cfg.RegisterFlagsWithPrefix("", flags)
-}
-
-// Positions tracks how far through each file we've read.
-type positions struct {
-	logger    log.Logger
-	cfg       Config
-	mtx       sync.Mutex
-	positions map[Entry]string
-	quit      chan struct{}
-	done      chan struct{}
 }
 
 // Entry describes a positions file entry consisting of an absolute file path and
@@ -200,6 +177,16 @@ func readLegacyFile(legacyPath string, l log.Logger) *LegacyFile {
 	return legacyPositions
 }
 
+// Positions tracks how far through each file we've read.
+type positions struct {
+	logger    log.Logger
+	cfg       Config
+	mtx       sync.Mutex
+	positions map[Entry]string
+	quit      chan struct{}
+	done      chan struct{}
+}
+
 // New makes a new Positions.
 func New(logger log.Logger, cfg Config) (Positions, error) {
 	positionData, err := readPositionsFile(cfg, logger)
@@ -267,7 +254,6 @@ func (p *positions) SyncPeriod() time.Duration {
 func (p *positions) run() {
 	defer func() {
 		p.save()
-		level.Debug(p.logger).Log("msg", "positions saved")
 		close(p.done)
 	}()
 
@@ -292,6 +278,8 @@ func (p *positions) save() {
 	if err := writePositionFile(p.cfg.PositionsFile, positions); err != nil {
 		level.Error(p.logger).Log("msg", "error writing positions file", "error", err)
 	}
+
+	level.Debug(p.logger).Log("msg", "positions saved")
 }
 
 func (p *positions) cleanup() {
