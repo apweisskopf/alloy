@@ -3,6 +3,7 @@ package positions
 import "time"
 
 type Positions interface {
+	Update(cfg Config)
 	// GetString returns how far we've through a file as a string.
 	// JournalTarget writes a journal cursor to the positions file, while
 	// FileTarget writes an integer offset. Use Get to read the integer

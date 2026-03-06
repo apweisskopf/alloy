@@ -56,6 +56,7 @@ type Arguments struct {
 	TailFromEnd          bool                 `alloy:"tail_from_end,attr,optional"`
 	LegacyPositionsFile  string               `alloy:"legacy_positions_file,attr,optional"`
 	OnPositionsFileError OnPositionsFileError `alloy:"on_positions_file_error,attr,optional"`
+	Position             positions.Config     `alloy:"position,block,optional"`
 }
 
 type OnPositionsFileError string
@@ -84,11 +85,8 @@ func (o *OnPositionsFileError) UnmarshalText(text []byte) error {
 func (a *Arguments) SetToDefault() {
 	a.FileWatch.SetToDefault()
 	a.FileMatch.SetToDefault()
+	a.Position.SetToDefault()
 	a.OnPositionsFileError = OnPositionsFileErrorRestartBeginning
-}
-
-func (a *Arguments) Validate() error {
-	return a.FileMatch.Validate()
 }
 
 type FileWatch struct {
@@ -223,7 +221,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	positionsFile, err := positions.New(
 		o.Logger,
 		newPositionsPath,
-		positions.Config{SyncPeriod: 10 * time.Second},
+		args.Position,
 	)
 	if err != nil {
 		return nil, err
@@ -300,6 +298,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	c.posFile.Update(newArgs.Position)
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	// Choose resolver on FileMatch.

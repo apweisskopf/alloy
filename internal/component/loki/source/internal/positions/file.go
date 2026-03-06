@@ -5,6 +5,7 @@ package positions
 // same place in case of a restart.
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/syntax"
 )
 
 const (
@@ -47,9 +49,25 @@ type File struct {
 	Positions map[Entry]string `yaml:"positions"`
 }
 
+var (
+	_ syntax.Defaulter = (*Config)(nil)
+	_ syntax.Validator = (*Config)(nil)
+)
+
 // Config describes where to get position information from.
 type Config struct {
-	SyncPeriod time.Duration
+	SyncPeriod time.Duration `alloy:"sync_period,attr,optional"`
+}
+
+func (c *Config) Validate() error {
+	if c.SyncPeriod <= 0 {
+		return errors.New("sync_period must be greater than 0")
+	}
+	return nil
+}
+
+func (c *Config) SetToDefault() {
+	c.SyncPeriod = 10 * time.Second
 }
 
 // PositionsFile tracks how far through each file we've read.
@@ -81,6 +99,18 @@ func New(logger log.Logger, path string, cfg Config) (Positions, error) {
 
 	go p.run()
 	return p, nil
+}
+
+func (p *PositionsFile) Update(cfg Config) {
+	p.mut.RLock()
+	if cfg.SyncPeriod != p.cfg.SyncPeriod {
+		p.mut.RUnlock()
+		p.mut.Lock()
+		defer p.mut.Unlock()
+		p.cfg = cfg
+		return
+	}
+	p.mut.RUnlock()
 }
 
 func (p *PositionsFile) Get(path, labels string) (int64, error) {
@@ -120,6 +150,8 @@ func (p *PositionsFile) remove(path, labels string) {
 }
 
 func (p *PositionsFile) SyncPeriod() time.Duration {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
 	return p.cfg.SyncPeriod
 }
 
@@ -130,28 +162,39 @@ func (p *PositionsFile) Stop() {
 
 func (p *PositionsFile) run() {
 	defer func() {
+		p.mut.Lock()
+		defer p.mut.Unlock()
 		p.save()
 		level.Debug(p.logger).Log("msg", "positions saved")
 		close(p.done)
 	}()
 
+	p.mut.RLock()
 	ticker := time.NewTicker(p.cfg.SyncPeriod)
+	p.mut.RUnlock()
+
 	for {
 		select {
 		case <-p.quit:
 			return
 		case <-ticker.C:
+			// We only need read lock for save and reset call because we only read state.
+			p.mut.RLock()
 			p.save()
+			ticker.Reset(p.cfg.SyncPeriod)
+			p.mut.RUnlock()
+
+			// We need write lock for cleanup because it will mutate state.
+			p.mut.Lock()
 			p.cleanup()
+			p.mut.Unlock()
 		}
 	}
 }
 
 func (p *PositionsFile) save() {
-	p.mut.Lock()
 	positions := make(map[Entry]string, len(p.positions))
 	maps.Copy(positions, p.positions)
-	p.mut.Unlock()
 
 	if err := writePositionFile(p.path, positions); err != nil {
 		level.Error(p.logger).Log("msg", "error writing positions file", "error", err)
@@ -161,8 +204,6 @@ func (p *PositionsFile) save() {
 }
 
 func (p *PositionsFile) cleanup() {
-	p.mut.Lock()
-	defer p.mut.Unlock()
 	toRemove := []Entry{}
 	for k := range p.positions {
 		// If the position file is prefixed with cursor, it's a

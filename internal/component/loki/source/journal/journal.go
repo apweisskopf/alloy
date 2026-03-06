@@ -67,7 +67,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	positionsFile, err := positions.New(
 		o.Logger,
 		positionFile,
-		positions.Config{SyncPeriod: 10 * time.Second},
+		args.Position,
 	)
 	if err != nil {
 		return nil, err
@@ -128,6 +128,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	c.positions.Update(newArgs.Position)
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	c.args = newArgs

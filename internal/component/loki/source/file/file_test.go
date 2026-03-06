@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
@@ -50,6 +51,9 @@ func Test_UnmarshalConfig(t *testing.T) {
 				OnPositionsFileError: OnPositionsFileErrorRestartBeginning,
 				ForwardTo:            []loki.LogsReceiver{},
 				Targets:              []discovery.Target{},
+				Position: positions.Config{
+					SyncPeriod: 10 * time.Second,
+				},
 			},
 		},
 		{
@@ -79,6 +83,9 @@ func Test_UnmarshalConfig(t *testing.T) {
 						"__path__": "/tmp/*.log",
 					}),
 				},
+				Position: positions.Config{
+					SyncPeriod: 10 * time.Second,
+				},
 			},
 		},
 		{
@@ -107,6 +114,9 @@ func Test_UnmarshalConfig(t *testing.T) {
 					discovery.NewTargetFromMap(map[string]string{
 						"__path__": "/tmp/*.log",
 					}),
+				},
+				Position: positions.Config{
+					SyncPeriod: 10 * time.Second,
 				},
 			},
 		},
