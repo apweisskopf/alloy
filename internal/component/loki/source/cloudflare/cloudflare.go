@@ -110,7 +110,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		SyncPeriod:        10 * time.Second,
 		PositionsFile:     filepath.Join(o.DataPath, "positions.yml"),
 		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
 	})
 	if err != nil {
 		return nil, err

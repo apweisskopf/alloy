@@ -26,12 +26,16 @@ const (
 	journalKeyPrefix = "journal-"
 )
 
+// CursorKey returns a key that can be saved as a cursor that is never deleted.
+func CursorKey(key string) string {
+	return cursorKeyPrefix + key
+}
+
 // Config describes where to get position information from.
 type Config struct {
-	SyncPeriod        time.Duration `mapstructure:"sync_period" yaml:"sync_period"`
-	PositionsFile     string        `mapstructure:"filename" yaml:"filename"`
-	IgnoreInvalidYaml bool          `mapstructure:"ignore_invalid_yaml" yaml:"ignore_invalid_yaml"`
-	ReadOnly          bool          `mapstructure:"-" yaml:"-"`
+	SyncPeriod        time.Duration
+	PositionsFile     string
+	IgnoreInvalidYaml bool
 }
 
 // RegisterFlagsWithPrefix registers flags where every name is prefixed by
@@ -222,20 +226,14 @@ func (p *positions) Stop() {
 	<-p.done
 }
 
-func (p *positions) PutString(path, labels string, pos string) {
-	p.mtx.Lock()
-	defer p.mtx.Unlock()
-	p.positions[Entry{path, labels}] = pos
-}
-
 func (p *positions) Put(path, labels string, pos int64) {
 	p.PutString(path, labels, strconv.FormatInt(pos, 10))
 }
 
-func (p *positions) GetString(path, labels string) string {
+func (p *positions) PutString(path, labels string, pos string) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
-	return p.positions[Entry{path, labels}]
+	p.positions[Entry{path, labels}] = pos
 }
 
 func (p *positions) Get(path, labels string) (int64, error) {
@@ -246,6 +244,12 @@ func (p *positions) Get(path, labels string) (int64, error) {
 		return 0, nil
 	}
 	return strconv.ParseInt(pos, 10, 64)
+}
+
+func (p *positions) GetString(path, labels string) string {
+	p.mtx.Lock()
+	defer p.mtx.Unlock()
+	return p.positions[Entry{path, labels}]
 }
 
 func (p *positions) Remove(path, labels string) {
@@ -282,9 +286,6 @@ func (p *positions) run() {
 }
 
 func (p *positions) save() {
-	if p.cfg.ReadOnly {
-		return
-	}
 	p.mtx.Lock()
 	positions := make(map[Entry]string, len(p.positions))
 	maps.Copy(positions, p.positions)
@@ -293,11 +294,6 @@ func (p *positions) save() {
 	if err := writePositionFile(p.cfg.PositionsFile, positions); err != nil {
 		level.Error(p.logger).Log("msg", "error writing positions file", "error", err)
 	}
-}
-
-// CursorKey returns a key that can be saved as a cursor that is never deleted.
-func CursorKey(key string) string {
-	return fmt.Sprintf("%s%s", cursorKeyPrefix, key)
 }
 
 func (p *positions) cleanup() {

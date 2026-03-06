@@ -31,7 +31,6 @@ func TestTailer(t *testing.T) {
 		SyncPeriod:        50 * time.Millisecond,
 		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
 		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
 	})
 	require.NoError(t, err)
 	labels := model.LabelSet{
@@ -127,7 +126,6 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		SyncPeriod:        50 * time.Millisecond,
 		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
 		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
 	})
 	require.NoError(t, err)
 	labels := model.LabelSet{
@@ -192,7 +190,6 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 		SyncPeriod:        50 * time.Millisecond,
 		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
 		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
 	})
 	require.NoError(t, err)
 	labels := model.LabelSet{
@@ -249,7 +246,6 @@ func TestTailerCorruptedPositions(t *testing.T) {
 		SyncPeriod:        50 * time.Millisecond,
 		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
 		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
 	})
 	require.NoError(t, err)
 	labels := model.LabelSet{
