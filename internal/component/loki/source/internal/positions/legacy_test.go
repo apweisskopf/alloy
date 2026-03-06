@@ -15,9 +15,7 @@ func TestLegacyConversion(t *testing.T) {
 	legacy := writeLegacy(t, tmpDir)
 	positionsPath := filepath.Join(tmpDir, "positions")
 	ConvertLegacyPositionsFile(legacy, positionsPath, log.NewNopLogger())
-	ps, err := readPositionsFile(Config{
-		PositionsFile: positionsPath,
-	}, log.NewNopLogger())
+	ps, err := readPositionsFile(positionsPath)
 	require.NoError(t, err)
 	require.Len(t, ps, 1)
 	for k, v := range ps {
@@ -38,9 +36,7 @@ func TestLegacyConversionWithNewFile(t *testing.T) {
 
 	// In this state nothing should be overwritten.
 	ConvertLegacyPositionsFile(legacy, positionsPath, log.NewNopLogger())
-	ps, err := readPositionsFile(Config{
-		PositionsFile: positionsPath,
-	}, log.NewNopLogger())
+	ps, err := readPositionsFile(positionsPath)
 	require.NoError(t, err)
 	require.Len(t, ps, 1)
 	for k, v := range ps {
@@ -60,9 +56,7 @@ func TestLegacyConversionWithNoLegacyFile(t *testing.T) {
 	require.NoError(t, err)
 
 	ConvertLegacyPositionsFile(legacy, positionsPath, log.NewNopLogger())
-	ps, err := readPositionsFile(Config{
-		PositionsFile: positionsPath,
-	}, log.NewNopLogger())
+	ps, err := readPositionsFile(positionsPath)
 	require.NoError(t, err)
 	require.Len(t, ps, 1)
 	for k, v := range ps {

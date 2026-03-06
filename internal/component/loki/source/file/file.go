@@ -220,10 +220,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if args.LegacyPositionsFile != "" {
 		positions.ConvertLegacyPositionsFile(args.LegacyPositionsFile, newPositionsPath, o.Logger)
 	}
-	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: newPositionsPath,
-	})
+	positionsFile, err := positions.New(
+		o.Logger,
+		newPositionsPath,
+		positions.Config{SyncPeriod: 10 * time.Second},
+	)
 	if err != nil {
 		return nil, err
 	}

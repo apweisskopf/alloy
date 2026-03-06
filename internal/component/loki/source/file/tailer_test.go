@@ -27,10 +27,13 @@ func TestTailer(t *testing.T) {
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")
 	require.NoError(t, err)
-	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:    50 * time.Millisecond,
-		PositionsFile: filepath.Join(tempDir, "positions.yaml"),
-	})
+	positionsFile, err := positions.New(
+		l,
+		filepath.Join(tempDir, "positions.yaml"),
+		positions.Config{
+			SyncPeriod: 50 * time.Millisecond,
+		},
+	)
 	require.NoError(t, err)
 	labels := model.LabelSet{
 		"filename": model.LabelValue(logFile.Name()),
@@ -121,10 +124,13 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")
 	require.NoError(t, err)
-	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:    50 * time.Millisecond,
-		PositionsFile: filepath.Join(tempDir, "positions.yaml"),
-	})
+	positionsFile, err := positions.New(
+		l,
+		filepath.Join(tempDir, "positions.yaml"),
+		positions.Config{
+			SyncPeriod: 50 * time.Millisecond,
+		},
+	)
 	require.NoError(t, err)
 	labels := model.LabelSet{
 		"filename": model.LabelValue(logFile.Name()),
@@ -184,10 +190,13 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")
 	require.NoError(t, err)
-	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:    50 * time.Millisecond,
-		PositionsFile: filepath.Join(tempDir, "positions.yaml"),
-	})
+	positionsFile, err := positions.New(
+		l,
+		filepath.Join(tempDir, "positions.yaml"),
+		positions.Config{
+			SyncPeriod: 50 * time.Millisecond,
+		},
+	)
 	require.NoError(t, err)
 	labels := model.LabelSet{
 		"filename": model.LabelValue(logFile.Name()),
@@ -239,10 +248,13 @@ func TestTailerCorruptedPositions(t *testing.T) {
 	_, err = logFile.Write([]byte("initial content\n"))
 	require.NoError(t, err)
 
-	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:    50 * time.Millisecond,
-		PositionsFile: filepath.Join(tempDir, "positions.yaml"),
-	})
+	positionsFile, err := positions.New(
+		l,
+		filepath.Join(tempDir, "positions.yaml"),
+		positions.Config{
+			SyncPeriod: 50 * time.Millisecond,
+		},
+	)
 	require.NoError(t, err)
 	labels := model.LabelSet{
 		"filename": model.LabelValue(logFile.Name()),
@@ -335,10 +347,13 @@ func TestTailer_Compressions(t *testing.T) {
 	defer handler.Stop()
 
 	logger := log.NewNopLogger()
-	positionsFile, err := positions.New(logger, positions.Config{
-		SyncPeriod:    50 * time.Millisecond,
-		PositionsFile: filepath.Join(t.TempDir(), "positions.yaml"),
-	})
+	positionsFile, err := positions.New(
+		logger,
+		filepath.Join(t.TempDir(), "positions.yaml"),
+		positions.Config{
+			SyncPeriod: 50 * time.Millisecond,
+		},
+	)
 	require.NoError(t, err)
 	defer positionsFile.Stop()
 

@@ -32,9 +32,7 @@ positions:
 			t.Fatal(err)
 		}
 
-		pos, err := readPositionsFile(Config{
-			PositionsFile: temp,
-		}, log.NewNopLogger())
+		pos, err := readPositionsFile(temp)
 
 		require.NoError(t, err)
 		require.Equal(t, "17623", pos[Entry{
@@ -61,9 +59,7 @@ positions:
 			t.Fatal(err)
 		}
 
-		pos, err := readPositionsFile(Config{
-			PositionsFile: temp,
-		}, log.NewNopLogger())
+		pos, err := readPositionsFile(temp)
 
 		require.NoError(t, err)
 		require.Equal(t, "17623", pos[Entry{
@@ -85,9 +81,7 @@ func TestReadPositionsEmptyFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pos, err := readPositionsFile(Config{
-		PositionsFile: temp,
-	}, log.NewNopLogger())
+	pos, err := readPositionsFile(temp)
 
 	require.NoError(t, err)
 	require.NotNil(t, pos)
@@ -104,9 +98,7 @@ func TestReadPositionsFromDir(t *testing.T) {
 		_ = os.Remove(temp)
 	}()
 
-	_, err = readPositionsFile(Config{
-		PositionsFile: temp,
-	}, log.NewNopLogger())
+	_, err = readPositionsFile(temp)
 
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), temp)) // error must contain filename
@@ -129,9 +121,7 @@ positions:
 		t.Fatal(err)
 	}
 
-	_, err = readPositionsFile(Config{
-		PositionsFile: temp,
-	}, log.NewNopLogger())
+	_, err = readPositionsFile(temp)
 
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), temp)) // error must contain filename
@@ -152,9 +142,8 @@ positions:
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := New(log.NewNopLogger(), Config{
-		SyncPeriod:    20 * time.Second,
-		PositionsFile: temp,
+	p, err := New(log.NewNopLogger(), temp, Config{
+		SyncPeriod: 20 * time.Second,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -170,9 +159,7 @@ positions:
 	}
 	require.Equal(t, int64(10030), pos)
 	p.(*PositionsFile).save()
-	out, err := readPositionsFile(Config{
-		PositionsFile: temp,
-	}, log.NewNopLogger())
+	out, err := readPositionsFile(temp)
 
 	require.NoError(t, err)
 	require.Equal(t, map[Entry]string{
@@ -206,9 +193,7 @@ positions:
 		t.Fatal(err)
 	}
 
-	pos, err := readPositionsFile(Config{
-		PositionsFile: temp,
-	}, log.NewNopLogger())
+	pos, err := readPositionsFile(temp)
 
 	require.NoError(t, err)
 	require.Equal(t, "10020", pos[Entry{

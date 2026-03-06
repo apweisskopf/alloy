@@ -49,14 +49,14 @@ type File struct {
 
 // Config describes where to get position information from.
 type Config struct {
-	SyncPeriod    time.Duration
-	PositionsFile string
+	SyncPeriod time.Duration
 }
 
 // PositionsFile tracks how far through each file we've read.
 type PositionsFile struct {
 	logger    log.Logger
 	cfg       Config
+	path      string
 	mut       sync.RWMutex
 	positions map[Entry]string
 	quit      chan struct{}
@@ -64,8 +64,8 @@ type PositionsFile struct {
 }
 
 // New makes a new Positions.
-func New(logger log.Logger, cfg Config) (Positions, error) {
-	positionData, err := readPositionsFile(cfg, logger)
+func New(logger log.Logger, path string, cfg Config) (Positions, error) {
+	positionData, err := readPositionsFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -73,6 +73,7 @@ func New(logger log.Logger, cfg Config) (Positions, error) {
 	p := &PositionsFile{
 		logger:    logger,
 		cfg:       cfg,
+		path:      path,
 		positions: positionData,
 		quit:      make(chan struct{}),
 		done:      make(chan struct{}),
@@ -80,11 +81,6 @@ func New(logger log.Logger, cfg Config) (Positions, error) {
 
 	go p.run()
 	return p, nil
-}
-
-func (p *PositionsFile) Stop() {
-	close(p.quit)
-	<-p.done
 }
 
 func (p *PositionsFile) Get(path, labels string) (int64, error) {
@@ -127,6 +123,11 @@ func (p *PositionsFile) SyncPeriod() time.Duration {
 	return p.cfg.SyncPeriod
 }
 
+func (p *PositionsFile) Stop() {
+	close(p.quit)
+	<-p.done
+}
+
 func (p *PositionsFile) run() {
 	defer func() {
 		p.save()
@@ -152,7 +153,7 @@ func (p *PositionsFile) save() {
 	maps.Copy(positions, p.positions)
 	p.mut.Unlock()
 
-	if err := writePositionFile(p.cfg.PositionsFile, positions); err != nil {
+	if err := writePositionFile(p.path, positions); err != nil {
 		level.Error(p.logger).Log("msg", "error writing positions file", "error", err)
 	}
 
@@ -187,8 +188,8 @@ func (p *PositionsFile) cleanup() {
 	}
 }
 
-func readPositionsFile(cfg Config, logger log.Logger) (map[Entry]string, error) {
-	cleanfn := filepath.Clean(cfg.PositionsFile)
+func readPositionsFile(path string) (map[Entry]string, error) {
+	cleanfn := filepath.Clean(path)
 	buf, err := os.ReadFile(cleanfn)
 	if err != nil {
 		if os.IsNotExist(err) {

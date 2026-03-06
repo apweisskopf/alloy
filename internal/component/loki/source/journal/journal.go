@@ -64,10 +64,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		positions.ConvertLegacyPositionsFileJournal(args.LegacyPosition.File, args.LegacyPosition.Name, positionFile, o.ID, o.Logger)
 	}
 
-	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: positionFile,
-	})
+	positionsFile, err := positions.New(
+		o.Logger,
+		positionFile,
+		positions.Config{SyncPeriod: 10 * time.Second},
+	)
 	if err != nil {
 		return nil, err
 	}
