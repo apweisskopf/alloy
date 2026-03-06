@@ -28,9 +28,8 @@ func TestTailer(t *testing.T) {
 	logFile, err := os.CreateTemp(tempDir, "example")
 	require.NoError(t, err)
 	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:        50 * time.Millisecond,
-		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-		IgnoreInvalidYaml: false,
+		SyncPeriod:    50 * time.Millisecond,
+		PositionsFile: filepath.Join(tempDir, "positions.yaml"),
 	})
 	require.NoError(t, err)
 	labels := model.LabelSet{
@@ -123,9 +122,8 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 	logFile, err := os.CreateTemp(tempDir, "example")
 	require.NoError(t, err)
 	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:        50 * time.Millisecond,
-		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-		IgnoreInvalidYaml: false,
+		SyncPeriod:    50 * time.Millisecond,
+		PositionsFile: filepath.Join(tempDir, "positions.yaml"),
 	})
 	require.NoError(t, err)
 	labels := model.LabelSet{
@@ -187,9 +185,8 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 	logFile, err := os.CreateTemp(tempDir, "example")
 	require.NoError(t, err)
 	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:        50 * time.Millisecond,
-		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-		IgnoreInvalidYaml: false,
+		SyncPeriod:    50 * time.Millisecond,
+		PositionsFile: filepath.Join(tempDir, "positions.yaml"),
 	})
 	require.NoError(t, err)
 	labels := model.LabelSet{
@@ -243,9 +240,8 @@ func TestTailerCorruptedPositions(t *testing.T) {
 	require.NoError(t, err)
 
 	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:        50 * time.Millisecond,
-		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-		IgnoreInvalidYaml: false,
+		SyncPeriod:    50 * time.Millisecond,
+		PositionsFile: filepath.Join(tempDir, "positions.yaml"),
 	})
 	require.NoError(t, err)
 	labels := model.LabelSet{

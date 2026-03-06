@@ -221,9 +221,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		positions.ConvertLegacyPositionsFile(args.LegacyPositionsFile, newPositionsPath, o.Logger)
 	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:        10 * time.Second,
-		PositionsFile:     newPositionsPath,
-		IgnoreInvalidYaml: false,
+		SyncPeriod:    10 * time.Second,
+		PositionsFile: newPositionsPath,
 	})
 	if err != nil {
 		return nil, err

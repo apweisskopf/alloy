@@ -33,9 +33,8 @@ func CursorKey(key string) string {
 
 // Config describes where to get position information from.
 type Config struct {
-	SyncPeriod        time.Duration
-	PositionsFile     string
-	IgnoreInvalidYaml bool
+	SyncPeriod    time.Duration
+	PositionsFile string
 }
 
 // RegisterFlagsWithPrefix registers flags where every name is prefixed by
@@ -43,7 +42,6 @@ type Config struct {
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.DurationVar(&cfg.SyncPeriod, prefix+"positions.sync-period", 10*time.Second, "Period with this to sync the position file.")
 	f.StringVar(&cfg.PositionsFile, prefix+"positions.file", "/var/log/positions.yaml", "Location to read/write positions from.")
-	f.BoolVar(&cfg.IgnoreInvalidYaml, prefix+"positions.ignore-invalid-yaml", false, "whether to ignore & later overwrite positions files that are corrupted")
 }
 
 // RegisterFlags register flags.
@@ -337,12 +335,6 @@ func readPositionsFile(cfg Config, logger log.Logger) (map[Entry]string, error) 
 	var p File
 	err = yaml.Unmarshal(buf, &p)
 	if err != nil {
-		// return empty if cfg option enabled
-		if cfg.IgnoreInvalidYaml {
-			level.Debug(logger).Log("msg", "ignoring invalid positions file", "file", cleanfn, "error", err)
-			return map[Entry]string{}, nil
-		}
-
 		return nil, fmt.Errorf("invalid yaml positions file [%s]: %v", cleanfn, err)
 	}
 

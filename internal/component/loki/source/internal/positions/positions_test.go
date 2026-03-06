@@ -266,76 +266,6 @@ positions:
 	require.True(t, strings.Contains(err.Error(), temp)) // error must contain filename
 }
 
-func TestReadPositionsFromBadYamlIgnoreCorruption(t *testing.T) {
-	temp := tempFilename(t)
-	defer func() {
-		_ = os.Remove(temp)
-	}()
-
-	badYaml := []byte(`
-positions:
-  ? path: /tmp/random.log
-    labels: "{}"
-  : "176
-`)
-	err := os.WriteFile(temp, badYaml, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	out, err := readPositionsFile(Config{
-		PositionsFile:     temp,
-		IgnoreInvalidYaml: true,
-	}, log.NewNopLogger())
-
-	require.NoError(t, err)
-	require.Equal(t, map[Entry]string{}, out)
-}
-
-func Test_ReadOnly(t *testing.T) {
-	temp := tempFilename(t)
-	defer func() {
-		_ = os.Remove(temp)
-	}()
-	yaml := []byte(`
-positions:
-  ? path: /tmp/random.log
-    labels: '{job="tmp"}'
-  : "17623"
-`)
-	err := os.WriteFile(temp, yaml, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-	p, err := New(log.NewNopLogger(), Config{
-		SyncPeriod:    20 * time.Second,
-		PositionsFile: temp,
-		ReadOnly:      true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer p.Stop()
-	p.Put("/foo/bar/f", "", 12132132)
-	p.PutString("/foo/f", "", "100")
-	pos, err := p.Get("/tmp/random.log", `{job="tmp"}`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	require.Equal(t, int64(17623), pos)
-	p.(*positions).save()
-	out, err := readPositionsFile(Config{
-		PositionsFile:     temp,
-		IgnoreInvalidYaml: true,
-		ReadOnly:          true,
-	}, log.NewNopLogger())
-
-	require.NoError(t, err)
-	require.Equal(t, map[Entry]string{
-		{Path: "/tmp/random.log", Labels: `{job="tmp"}`}: "17623",
-	}, out)
-}
-
 func TestWriteEmptyLabels(t *testing.T) {
 	temp := tempFilename(t)
 	defer func() {
@@ -370,9 +300,7 @@ positions:
 	require.Equal(t, int64(10030), pos)
 	p.(*positions).save()
 	out, err := readPositionsFile(Config{
-		PositionsFile:     temp,
-		IgnoreInvalidYaml: true,
-		ReadOnly:          false,
+		PositionsFile: temp,
 	}, log.NewNopLogger())
 
 	require.NoError(t, err)
